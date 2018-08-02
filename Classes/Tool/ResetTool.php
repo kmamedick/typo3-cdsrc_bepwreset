@@ -277,19 +277,40 @@ class ResetTool
     protected function updateResetCode()
     {
         if (!empty($this->user)) {
-            /** @var \TYPO3\CMS\Core\Database\Query\QueryBuilder $queryBuilder */
-            $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('be_users');
-            $namedParameterUid = $queryBuilder->createNamedParameter(intval($this->user['uid']),\PDO::PARAM_INT);
-            $hash = md5((String)$EXEC_TIME . '-' . mt_rand(1000, 100000));
-            $namedParameterHash = $queryBuilder->createNamedParameter($hash,\PDO::PARAM_STR);
-            $namedParameterHashValidity = $queryBuilder->createNamedParameter(($EXEC_TIME + 3600),\PDO::PARAM_INT);
-            $updateQuery = $queryBuilder->update('be_users')
-                                ->where($queryBuilder->expr()->eq('uid',$namedParameterUid))
-                                ->set('tstamp',$queryBuilder->createNamedParameter($EXEC_TIME,\PDO::PARAM_INT))
-                                ->set('tx_cdsrcbepwreset_resetHash',$namedParameterHash)
-                                ->set('tx_cdsrcbepwreset_resetHashValidity',$namedParameterHashValidity);
-            if ($updateQuery->execute()) {
-                return $fields;
+            $hash = md5((String)$GLOBALS['EXEC_TIME'] . '-' . mt_rand(1000, 100000));
+
+            $fields = array(
+                'tstamp' => $GLOBALS['EXEC_TIME'],
+                'tx_cdsrcbepwreset_resetHash' => $hash,
+                'tx_cdsrcbepwreset_resetHashValidity' => ($GLOBALS['EXEC_TIME'] + 3600)
+            );
+
+            if (class_exists(ConnectionPool::class)) {
+                /** @var \TYPO3\CMS\Core\Database\Query\QueryBuilder $queryBuilder */
+                $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('be_users');
+                $namedParameterUid = $queryBuilder->createNamedParameter(intval($this->user['uid']), \PDO::PARAM_INT);
+                $namedParameterHash = $queryBuilder->createNamedParameter($hash, \PDO::PARAM_STR);
+                $namedParameterHashValidity = $queryBuilder->createNamedParameter(($GLOBALS['EXEC_TIME'] + 3600), \PDO::PARAM_INT);
+                $updateQuery = $queryBuilder->update('be_users')
+                    ->where($queryBuilder->expr()->eq('uid', $namedParameterUid))
+                    ->set('tstamp', $queryBuilder->createNamedParameter($GLOBALS['EXEC_TIME'], \PDO::PARAM_INT))
+                    ->set('tx_cdsrcbepwreset_resetHash', $namedParameterHash)
+                    ->set('tx_cdsrcbepwreset_resetHashValidity', $namedParameterHashValidity);
+
+                if ($updateQuery->execute()) {
+                    return $fields;
+                }
+
+            } else {
+
+                $res = $GLOBALS['TYPO3_DB']->exec_UPDATEquery(
+                    'be_users',
+                    'uid=' . intval($this->user['uid']),
+                    $fields
+                );
+                if ($res) {
+                    return $fields;
+                }
             }
         }
         return false;

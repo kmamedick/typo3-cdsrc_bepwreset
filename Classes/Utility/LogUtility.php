@@ -71,24 +71,41 @@ class LogUtility {
      * 
      * @return integer
      */
-    protected static function writeToSysLog($message, $userId = 0, $type = 255, $action = 0, $error = 0) {
-        /** @var \TYPO3\CMS\Extbase\Object\ObjectManager $objectManager */	
-	$objectManager = GeneralUtility::makeInstance(ObjectManager::class);
-	/** @var \TYPO3\CMS\Core\Database\Connection $connection */
-	$connection = $objectManager->get(ConnectionPool::class)->getConnectionForTable('sys_log');
-	$connection->insert('sys_log')->values(array(
-		'userid' => (int) $userId,
-		'type' => (int) $type,
-		'action' => (int) $action,
-		'error' => (int) $error,
-		'details_nr' => 1,
-		'details' => $message,
-		'log_data' => serialize(array()),
-		'tablename' => '',
-		'IP' => (string) GeneralUtility::getIndpEnv('REMOTE_ADDR'),
-		'tstamp' => $GLOBALS['EXEC_TIME'],
-		'event_pid' => -1,
-		'workspace' => '-99'
-	))->execute();
-        return $connection->lastInsertId('sys_log');
+    protected static function writeToSysLog($message, $userId = 0, $type = 255, $action = 0, $error = 0)
+    {
+        $lastInsertId = false;
+        $values = array(
+            'userid' => (int)$userId,
+            'type' => (int)$type,
+            'action' => (int)$action,
+            'error' => (int)$error,
+            'details_nr' => 1,
+            'details' => $message,
+            'log_data' => serialize(array()),
+            'tablename' => '',
+            'IP' => (string)GeneralUtility::getIndpEnv('REMOTE_ADDR'),
+            'tstamp' => $GLOBALS['EXEC_TIME'],
+            'event_pid' => -1,
+            'workspace' => '-99'
+        );
+
+        if (class_exists(ConnectionPool::class)) {
+            /** @var \TYPO3\CMS\Extbase\Object\ObjectManager $objectManager */
+            $objectManager = GeneralUtility::makeInstance(ObjectManager::class);
+            /** @var \TYPO3\CMS\Core\Database\Connection $connection */
+            $connection = $objectManager->get(ConnectionPool::class)->getConnectionForTable('sys_log');
+            $connection->insert('sys_log')->values($values)->execute();
+
+            $lastInsertId = $connection->lastInsertId('sys_log');
+
+        } else {
+
+            $GLOBALS['TYPO3_DB']->exec_INSERTquery(
+                'sys_log',
+                $values
+            );
+        }
+
+        return $lastInsertId;
+    }
 }

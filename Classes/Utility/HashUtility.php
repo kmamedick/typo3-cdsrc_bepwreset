@@ -60,7 +60,12 @@ class HashUtility
                 )->execute()
                 ->fetchAll();
         } else {
-            $users = BackendUtility::getRecordsByField('be_users', 'deleted', 0, ' AND ' . $whereClause);
+            $users = BackendUtility::getRecordsByField(
+                'be_users',
+                'deleted',
+                0,
+                " AND SHA1(CONCAT(username,'::',tx_cdsrcbepwreset_resetHash,'::" . md5($GLOBALS['TYPO3_CONF_VARS']['SYS']['encryptionKey']) . "'))='" . $hash . "'"
+            );
         }
 
         if (is_array($users) && count($users) === 1) {
