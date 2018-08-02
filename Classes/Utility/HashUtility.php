@@ -48,23 +48,32 @@ class HashUtility
      */
     public static function getUser($hash)
     {
+        $hashSQL = "SHA1(CONCAT(username,'::',tx_cdsrcbepwreset_resetHash,'::" . md5($GLOBALS['TYPO3_CONF_VARS']['SYS']['encryptionKey']) . "'))";
+
         if (class_exists(ConnectionPool::class)) {
             /** @var \TYPO3\CMS\Core\Database\Query\QueryBuilder $queryBuilder */
             $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('be_users');
-            $users = $queryBuilder->select('*')
+            $queryBuilder->select('*')
                 ->from('be_users')
-                ->where($queryBuilder->expr()->eq(
-                    self::getHash('be_users.username','be_users.tx_cdsrcbepwreset_resetHash'),
+                ->where($queryBuilder->expr()->comparison(
+                    $hashSQL,
+                    '=',
                     $queryBuilder->createNamedParameter($hash,\PDO::PARAM_STR)
                 )
-                )->execute()
-                ->fetchAll();
+            );
+
+            try {
+                $users = $queryBuilder->execute()->fetchAll();
+            } catch (\Doctrine\DBAL\DBALException $e) {
+                return false;
+            }
+
         } else {
             $users = BackendUtility::getRecordsByField(
                 'be_users',
                 'deleted',
                 0,
-                " AND SHA1(CONCAT(username,'::',tx_cdsrcbepwreset_resetHash,'::" . md5($GLOBALS['TYPO3_CONF_VARS']['SYS']['encryptionKey']) . "'))='" . $hash . "'"
+                " AND " . $hashSQL . "='" . $hash . "'"
             );
         }
 

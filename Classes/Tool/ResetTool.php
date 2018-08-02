@@ -286,19 +286,21 @@ class ResetTool
             );
 
             if (class_exists(ConnectionPool::class)) {
-                /** @var \TYPO3\CMS\Core\Database\Query\QueryBuilder $queryBuilder */
-                $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('be_users');
-                $namedParameterUid = $queryBuilder->createNamedParameter(intval($this->user['uid']), \PDO::PARAM_INT);
-                $namedParameterHash = $queryBuilder->createNamedParameter($hash, \PDO::PARAM_STR);
-                $namedParameterHashValidity = $queryBuilder->createNamedParameter(($GLOBALS['EXEC_TIME'] + 3600), \PDO::PARAM_INT);
-                $updateQuery = $queryBuilder->update('be_users')
-                    ->where($queryBuilder->expr()->eq('uid', $namedParameterUid))
-                    ->set('tstamp', $queryBuilder->createNamedParameter($GLOBALS['EXEC_TIME'], \PDO::PARAM_INT))
-                    ->set('tx_cdsrcbepwreset_resetHash', $namedParameterHash)
-                    ->set('tx_cdsrcbepwreset_resetHashValidity', $namedParameterHashValidity);
+                try {
+                    /** @var \TYPO3\CMS\Core\Database\Query\QueryBuilder $queryBuilder */
+                    $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('be_users');
+                    $namedParameterUid = $queryBuilder->createNamedParameter(intval($this->user['uid']), \PDO::PARAM_INT);
+                    $queryBuilder->update('be_users')
+                        ->where($queryBuilder->expr()->eq('uid', $namedParameterUid))
+                        ->set('tstamp', (int)$GLOBALS['EXEC_TIME'])
+                        ->set('tx_cdsrcbepwreset_resetHash', $hash)
+                        ->set('tx_cdsrcbepwreset_resetHashValidity', (int)($GLOBALS['EXEC_TIME'] + 3600))
+                        ->execute();
 
-                if ($updateQuery->execute()) {
                     return $fields;
+
+                } catch (\Doctrine\DBAL\DBALException $e) {
+                    return false;
                 }
 
             } else {
