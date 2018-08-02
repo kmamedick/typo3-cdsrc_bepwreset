@@ -52,15 +52,17 @@ class HashUtility
             /** @var \TYPO3\CMS\Core\Database\Query\QueryBuilder $queryBuilder */
             $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('be_users');
             $users = $queryBuilder->select('*')
-                                   ->from('be_users')
-                                   ->where($queryBuilder->expr()
-                                        ->eq($this::getHash('be_users.username','be_users.tx_cdsrcbepwreset_resetHash'),
-                                                $queryBuilder->createNamedParameter($hash,\PDO::PARAM_STR))
-                                   )->execute()
-                                   ->fetchAll();
+                ->from('be_users')
+                ->where($queryBuilder->expr()->eq(
+                    self::getHash('be_users.username','be_users.tx_cdsrcbepwreset_resetHash'),
+                    $queryBuilder->createNamedParameter($hash,\PDO::PARAM_STR)
+                )
+                )->execute()
+                ->fetchAll();
         } else {
             $users = BackendUtility::getRecordsByField('be_users', 'deleted', 0, ' AND ' . $whereClause);
         }
+
         if (is_array($users) && count($users) === 1) {
             return $users[0];
         }
